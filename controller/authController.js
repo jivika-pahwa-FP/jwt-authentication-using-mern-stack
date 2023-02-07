@@ -53,7 +53,7 @@ const loginUser = async (req, res) => {
                         email: userPresentInDB.email
                     }
                     const token = jwt.sign(tokenData, "SecretKey123", { expiresIn: '30d' });
-                    return res.status(200).send({ success: true, msg: "login successful!",token : token });
+                    return res.status(200).send({ success: true, msg: "login successful!", token: token });
                 }
                 else {
                     return res.send({ success: false, msg: "invalid credentials!" });
@@ -70,8 +70,57 @@ const loginUser = async (req, res) => {
     }
 }
 
+const userData = async (req, res) => {
+    try {
+        console.log("userData called...");
+        console.log(req.body);
+        res.status(200).send({ success: true, data: req.body.user });
+    }
+    catch (error) {
+        res.status(400).send(error);
+    }
+}
+
+const updateUser = async (req, res) => {
+    const update_user = req.body;
+    console.log(req.body);
+    const email = update_user.email;
+    const userObj = await User.findOne({ email });
+    console.log("updateUser - obj found !!");
+    console.log(userObj);
+
+    if (userObj) {
+        await bcrypt.compare(update_user.current_password, userObj.password, async (err, data) => {
+            if (err) throw err;
+            else {
+                const salt = await bcrypt.genSalt(15)
+                const hashedNewPassword = await bcrypt.hash(update_user.password, salt)
+                console.log(`hashedNewPassword : ${hashedNewPassword}`);
+                User.findByIdAndUpdate(userObj._id, {
+                    name: update_user.name,
+                    email: update_user.email,
+                    password: hashedNewPassword
+                }, (err => {
+                    if (err) {
+                        return res.status(400).send({ msg: "Something went wrong" });
+                    }
+                    else {
+                        console.log("Password updated successfully");
+                        return res.status(200).send({ success: true, msg: "Password updated successfully" });
+                    }
+                }))
+            }
+        })
+    }
+    else {
+        return res.send({ msg: "No User Found or Something went wrong" });
+    }
+}
+
 
 module.exports = {
     registerUser,
-    loginUser
+    loginUser,
+    userData,
+    updateUser
 }
